@@ -1,118 +1,173 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, { Component } from 'react';
+import { View, StyleSheet, FlatList, Text, ActivityIndicator, Dimensions, TouchableOpacity, Image } from 'react-native';
+import axios from 'axios';
+import HotelCard from './components/HotelCard';
+import ArrowIcon from './assets/arrowicon.png';
+import FilterIcon from './assets/filtericon.png';
 
-import React from 'react';
-import type {PropsWithChildren} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+const { width, height } = Dimensions.get('window');
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+export default class App extends Component {
+  constructor() {
+    super();
+    this.state = {
+      hotels: [],
+      page: 1,
+      pageSize: 5,
+      isLoading: false,
+    };
+  }
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+  componentDidMount() {
+    this.loadHotels();
+  }
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+  loadHotels = () => {
+    const { hotels, page, pageSize } = this.state;
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
 
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+    this.setState({ isLoading: true });
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+    axios.get('https://gist.githubusercontent.com/yasaricli/de2282f01c739a5c8fcbffbb9116e277/raw/949b2393642747d2f54edf0ce659f27a69c87690/hotels.json')
+      .then(response => {
+        const newHotels = response.data.resultObject.hotelList.slice(startIndex, endIndex);
+
+        this.setState(prevState => ({
+          hotels: [...prevState.hotels, ...newHotels],
+          isLoading: false,
+        }));
+      })
+      .catch(error => {
+        console.error('Error fetching data:', error);
+        this.setState({ isLoading: false });
+      });
   };
 
-  return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
+  handleLoadMore = () => {
+    if (!this.state.isLoading) {
+      this.setState(prevState => ({
+        page: prevState.page + 1,
+      }), () => {
+        this.loadHotels();
+      });
+    }
+  };
+
+  renderFooter = () => {
+    return (
+      <View style={styles.loadingFooter}>
+        {this.state.isLoading && <ActivityIndicator style={{ marginTop: 20 }} size="large" color="green" />}
+      </View>
+    );
+  };
+
+  render() {
+    return (
+      <View style={styles.container}>
+        <View style={styles.topContainer}>
+          <Text style={styles.topHeader}>Antalya</Text>
+          <Text style={styles.topTwoHeader}>18 Şub - 23 Şub, 2 Yetişkin</Text>
+
         </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
+        <View style={styles.topTwoContainer}>
+          <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Image
+              source={ArrowIcon}
+              style={styles.image}
+            />
+            <Text style={styles.topHeaderTwoDescription}>Sırala</Text>
+
+          </TouchableOpacity>
+          <View style={styles.verticalLine} />
+
+          <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Image
+              source={FilterIcon}
+              style={styles.image}
+            />
+            <Text style={styles.topHeaderTwoDescription}>Filtrele</Text>
+
+          </TouchableOpacity>
+        </View>
+        <FlatList
+          showsVerticalScrollIndicator={false}
+          data={this.state.hotels}
+          keyExtractor={(item, index) => index.toString()}
+          renderItem={({ item }) => (
+            <HotelCard
+              hotelName={item.hotelName}
+              customerScore={item.customerScore}
+              location={item.location}
+              areaName={item.areaName}
+              subAreaName={item.subAreaName}
+              subAreaDetailName={item.subAreaDetailName}
+              photoPath={item.photoPath}
+              accommodation={item.accommodation}
+              campaignName={item.campaignName}
+              discountPrice={item.discountPrice}
+            />
+          )}
+          onEndReached={this.handleLoadMore}
+          onEndReachedThreshold={0.1}
+          ListFooterComponent={this.renderFooter}
+        />
+      </View>
+    );
+  }
 }
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  container: {
+    flex: 1,
+    backgroundColor: '#C4C4C4',
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
+  topContainer: {
+    backgroundColor: 'white',
+    alignItems: 'center',
+    padding: 10
   },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
+  topTwoContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: 'white',
+    alignItems: 'center',
+    padding: height * 0.01,
+    marginTop: height * 0.005
   },
-  highlight: {
-    fontWeight: '700',
+  loadingFooter: {
+    paddingVertical: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-});
+  topHeader: {
+    fontSize: width * 0.04,
+    color: 'black',
+    fontWeight: 'bold'
+  },
+  topTwoHeader: {
+    fontSize: width * 0.03,
+    color: 'black',
+  },
+  topHeaderDescription: {
+    fontSize: width * 0.03,
+    padding: height * 0.008
+  },
 
-export default App;
+  topHeaderTwoDescription: {
+    color: '#7FC7D9',
+    fontWeight: 'bold',
+    fontSize: width * 0.034,
+    padding: 4
+  },
+  verticalLine: {
+    height: height * 0.025,
+    width: width * 0.002,  // 1 piksellik çizgi
+    backgroundColor: 'gray',
+  },
+  image: {
+    width: width * 0.033,
+    height: width * 0.033,
+
+  }
+});
